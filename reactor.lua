@@ -1,5 +1,5 @@
 
-os.loadAPI("lib/f")
+os.loadAPI("lib/f.lua")
 os.loadAPI("lib/button")
 
 local targetStrength = 50
@@ -14,36 +14,7 @@ local version = 0.2
 local autoInputGate = 1
 local curInputGate = 222000
 
-local sides = {
-	"left",
-	"right",
-	"back",
-	"front",
-	"bottom",
-}
 
-function Identify(name, data)
-	if name == data then
-		return true
-	else
-		return false
-	end
-end
-
-function getPeripheral(id)
-	local names = peripheral.getNames()
-	for k, v in pairs(names) do
-		local Type = peripheral.getType(v)
-		local isType = Identify(id, Type)
-		if isType then
-			for _, t in pairs(sides) do
-				if v == t then
-					return peripheral.wrap(t)
-				end
-			end
-		end
-	end
-end
 
 local mon, monitor, monX, monY
 
@@ -60,18 +31,22 @@ local emergencyTemp = false
 
 monitor = f.periphSearch("monitor")
 inputFluxgate = f.periphSearch("flux_gate")
-fluxgate = getPeripheral("flux_gate")
-reactor = getPeripheral("draconic_reactor")
+fluxgate = f.getPeripheral("flux_gate")
+reactor = f.getPeripheral("draconic_reactor")
 
-if monitor == null then
+if monitor == nil then
 	error("No valid monitor was found")
 end
 
-if fluxgate == null then
+if fluxgate == nil then
 	error("No valid fluxgate was found")
 end
 
-if reactor == null then
+if inputFluxgate == nil then
+	error("No input fluxgate was found")
+end
+
+if reactor == nil then
 	error("No reactor was found")
 end
 
@@ -79,14 +54,14 @@ monX, monY = monitor.getSize()
 mon = {}
 mon.monitor, mon.X, mon.Y = monitor, monX, monY
 
+f.firstSet(mon)
+
 function mon.clear()
 	mon.monitor.setBackgroundColor(colors.black)
 	mon.monitor.clear()
 	mon.monitor.setCursorPos(1,1)
 	button.screen()
 end
-
-mon.clear()
 
 function save_config()
 	sw = fs.open("reactorconfig.txt", "w")
