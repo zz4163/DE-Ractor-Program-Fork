@@ -324,8 +324,8 @@ function reactorInfoScreen()
 	if ri.temperature >= 5000 and ri.temperature <= 6500 then tempColor = colors.orange end
 	f.draw_text_lr(mon, 4, 7, 3, "Temperature:", f.format_int(ri.temperature).."C", colors.white, tempColor, colors.black)
 
-	f.draw_text_lr(mon, 4, 9, 3, "Output Gate:", f.format_int(fluxgate.getSignalLowFlow()).." rf/t", colors.white, colors.blue, colors.black)
-	f.draw_text_lr(mon, 4, 10, 3, "Input Gate:", f.format_int(inputFluxgate.getSignalLowFlow()).." rf/t", colors.white, colors.blue, colors.black)
+	f.draw_text_lr(mon, 4, 9, 3, "Output Gate:", f.format_int(fluxgate.getSignalLowFlow()).." rf/t", colors.white, colors.lightBlue, colors.black)
+	f.draw_text_lr(mon, 4, 10, 3, "Input Gate:", f.format_int(inputFluxgate.getSignalLowFlow()).." rf/t", colors.white, colors.lightBlue, colors.black)
 	
 	local satPercent 
 	satPercent = math.ceil(ri.energySaturation / ri.maxEnergySaturation * 10000)*.01
