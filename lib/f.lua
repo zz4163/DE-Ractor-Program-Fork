@@ -1,6 +1,10 @@
 
 -- peripheral identification
 --
+
+local monitorr = peripheral.find("monitor")
+monitorr.setTextScale(0.5)
+
 function periphSearch(type)
    local names = peripheral.getNames()
    local i, name
@@ -91,3 +95,5 @@ function clear(mon)
   mon.monitor.clear()
   mon.monitor.setCursorPos(1,1)
 end
+
+monitorr.setTextScale(0.5)
