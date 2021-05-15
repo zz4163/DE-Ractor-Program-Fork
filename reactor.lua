@@ -134,7 +134,7 @@ function reactorControl()
 	end
 
 	if ri.status == "warming_up" and activateOnCharge == true then
-		reactor.activateOnCharge()
+		reactor.activateReactor()
 	end
 
 	if ri.status == "running" then
@@ -270,7 +270,6 @@ function outputMenu()
 
 end
 
-
 function buttonMain()
 
 	mon.clear()
@@ -287,8 +286,6 @@ function buttonMain()
 	button.screen()
 
 end
-
-
 
 function reactorInfoScreen()
 
