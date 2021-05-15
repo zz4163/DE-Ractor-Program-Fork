@@ -16,6 +16,8 @@ Here is the input flux gate. This is controlled by the program to get 50% field.
 
 
 Pastebin Code:
+Keep this as startup so if there any updates to the program it automatically updates the files and runs the program
+
 >pastebin get EJPU9YAA startup
 
 Credit to acidjazz for f API and some of the code to make this work.
