@@ -285,7 +285,7 @@ function buttonMain()
 
 end
 
-buttonMain()
+
 
 function reactorInfoScreen()
 
@@ -331,7 +331,7 @@ function reactorInfoScreen()
 	satPercent = math.ceil(ri.energySaturation / ri.maxEnergySaturation * 10000)*.01
 
 	f.draw_text_lr(mon, 4, 12, 3, "Energy Saturation:", satPercent.."%", colors.white, colors.green, colors.black)
-	f.progress_bar(mon, 4, 13, monX-7, satPercent, 100, colors.green, colors.white)
+	f.progress_bar(mon, 4, 13, monX-7, satPercent, 100, colors.green, colors.lightGray)
 
 	local fieldPercent, fieldColor
 	fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000)*.01
@@ -345,7 +345,7 @@ function reactorInfoScreen()
 	else
 		f.draw_text_lr(mon, 4, 15, 3, "Field Strength:", fieldPercent.."%", colors.white, fieldColor, colors.black)
 	end
-	f.progress_bar(mon, 4, 16, monX-7, fieldPercent, 100, fieldColor, colors.white)
+	f.progress_bar(mon, 4, 16, monX-7, fieldPercent, 100, fieldColor, colors.lightGray)
 
 	local fuelPercent, fuelColor
 	fuelPercent = 100 - math.ceil(ri.fuelConversion / ri.maxFuelConversion * 10000)*.01
@@ -356,7 +356,7 @@ function reactorInfoScreen()
 
 	f.draw_text_lr(mon, 4, 18, 3, "Fuel:", fuelPercent.."%", colors.white, fuelColor, colors.black)
 
-	f.progress_bar(mon, 4, 19, monX-7, fuelPercent, 100, fuelColor, colors.white)
+	f.progress_bar(mon, 4, 19, monX-7, fuelPercent, 100, fuelColor, colors.lightGray)
 
 	sleep(1.25)
 
@@ -366,6 +366,9 @@ function reactorInfoScreen()
 
 end
 
+mon.clear()
 mon.monitor.setTextScale(0.5)
+
+buttonMain()
 
 reactorInfoScreen()
