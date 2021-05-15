@@ -2,9 +2,6 @@
 os.loadAPI("lib/f")
 os.loadAPI("lib/button")
 
-local reactorSide = "back"
-local fluxgateSide = "left"
-
 local targetStrength = 50
 local maxTemp = 8000
 local safeTemp = 3000
@@ -12,10 +9,41 @@ local lowFieldPer = 15
 
 local activateOnCharge = true
 
-local version = 0.1
+local version = 0.2
 
 local autoInputGate = 1
 local curInputGate = 222000
+
+local sides = {
+	"left",
+	"right",
+	"back",
+	"front",
+	"bottom",
+}
+
+function Identify(name, data)
+	if name == data then
+		return true
+	else
+		return false
+	end
+end
+
+function getPeripheral(id)
+	local names = peripheral.getNames()
+	for k, v in pairs(names) do
+		local Type = peripheral.getType(v)
+		local isType = Identify(id, Type)
+		if isType then
+			for _, t in pairs(sides) do
+				if v == t then
+					return peripheral.wrap(t)
+				end
+			end
+		end
+	end
+end
 
 local mon, monitor, monX, monY
 
@@ -32,8 +60,8 @@ local emergencyTemp = false
 
 monitor = f.periphSearch("monitor")
 inputFluxgate = f.periphSearch("flux_gate")
-fluxgate = peripheral.wrap(fluxgateSide)
-reactor = peripheral.wrap(reactorSide)
+fluxgate = getPeripheral("flux_gate")
+reactor = getPeripheral("draconic_reactor")
 
 if monitor == null then
 	error("No valid monitor was found")
