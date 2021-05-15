@@ -8,14 +8,15 @@ Monitor and Input flux gate needs to be connected via wired modem if not the pro
 
 ![Base Profile Screenshot 2021 05 15 - 16 03 07 46](https://user-images.githubusercontent.com/62036454/118366137-62f75e80-b597-11eb-9d23-d814ce544513.png)
 
-Here you can see the computer is touching the output flux gate and the reactor stabilizer. You can have them at the sides longs you edit the startup file to tell the program that sides have changed. 
+The screenshot above shows how the computer must be for the program to work. Doesn't matter where the flux gate or the reactor stabilizer is positioned longs is physically touching the computer. The program automatically detects which side is the flux gate and reactor are touching on the computer.
 
 ![Base Profile Screenshot 2021 05 15 - 16 03 19 94](https://user-images.githubusercontent.com/62036454/118366149-6ab70300-b597-11eb-8e45-36ac90727b28.png)
 
-Here is the input flux gate. This is controlled by the program to get 50% field. You can change the percentage in the startup 
+The screenshot above shows how the input flux gate is connected to the computer. Its using wired modem to connect to the main computer. The computer automatically changes rf/t input that goes in the reactor to get field strength to 50% longs there power going in it should be able to keep it there. If the computer can't keep the reactor over 15% the computer will shut the reactor down and produce a warning on the screen to tell the user why it was shutdown.
 
 ![Base Profile Screenshot 2021 05 15 - 16 02 59 50](https://user-images.githubusercontent.com/62036454/118366126-5a9f2380-b597-11eb-8741-ba985d542155.png)
 
+The screenshot above is the monitor. Tells the user all the stats plus some buttons to control the reactor with. Soon I'll update this to make you able to manually set the input flux gate yourself but right now it does this automatically to get 50% field strength.
 
 Pastebin Code:
 Keep this as startup so if there any updates to the program it automatically updates the files and runs the program
