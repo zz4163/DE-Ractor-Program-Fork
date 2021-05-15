@@ -5,4 +5,4 @@ Setup 3x3 monitor.
 Computer needs to be directly touching Reactor Stabilizer and the output Flux gate
 
 Pastebin Code:
->pastebin get wsDkvkkc install
+>pastebin get EJPU9YAA install
