@@ -3,6 +3,7 @@ Computercraft menu for the reactor on Draconic Evolution mod
 
 Setup 3x3 monitor.
 Computer needs to be directly touching Reactor Stabilizer and the output Flux gate
+Monitor and Input flux gate needs to be connected via wired modem if not the program would not work.
 
 ![Base Profile Screenshot 2021 05 15 - 16 03 07 46](https://user-images.githubusercontent.com/62036454/118366137-62f75e80-b597-11eb-9d23-d814ce544513.png)
 
