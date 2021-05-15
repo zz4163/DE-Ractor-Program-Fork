@@ -16,6 +16,6 @@ Here is the input flux gate. This is controlled by the program to get 50% field.
 
 
 Pastebin Code:
->pastebin get EJPU9YAA install
+>pastebin get EJPU9YAA startup
 
 Credit to acidjazz for f API and some of the code to make this work.
