@@ -1,6 +1,6 @@
 
-os.loadAPI("lib/f.lua")
-os.loadAPI("lib/button.lua")
+os.loadAPI("lib/f")
+os.loadAPI("lib/button")
 
 local reactorSide = "back"
 local fluxgateSide = "left"
