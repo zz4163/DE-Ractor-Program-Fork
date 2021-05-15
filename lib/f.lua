@@ -2,8 +2,37 @@
 -- peripheral identification
 --
 
-local monitorr = peripheral.find("monitor")
-monitorr.setTextScale(0.5)
+local sides = {
+  "left",
+  "right",
+  "back",
+  "front",
+  "bottom",
+}
+
+function Identify(name, data)
+  if name == data then
+    return true
+  else
+    return false
+  end
+end
+
+function getPeripheral(id)
+  local names = peripheral.getNames()
+  for k, v in pairs(names) do
+    local Type = peripheral.getType(v)
+    local isType = Identify(id, Type)
+    if isType then
+      for _, t in pairs(sides) do
+        if v == t then
+          return peripheral.wrap(t)
+        end
+      end
+    end
+  end
+  return nil
+end
 
 function periphSearch(type)
    local names = peripheral.getNames()
@@ -13,7 +42,7 @@ function periphSearch(type)
          return peripheral.wrap(name)
       end
    end
-   return null
+   return nil
 end
 
 -- formatting
@@ -88,12 +117,16 @@ function progress_bar(mon, x, y, length, minVal, maxVal, bar_color, bg_color)
 end
 
 
-function clear(mon)
-  term.clear()
-  term.setCursorPos(1,1)
+function firstSet(mon)
+  mon.monitor.setTextScale(1)
   mon.monitor.setBackgroundColor(colors.black)
   mon.monitor.clear()
   mon.monitor.setCursorPos(1,1)
 end
 
-monitorr.setTextScale(0.5)
+
+local monitor = peripheral.find("monitor")
+if monitor == nil then
+  error("Monitor not found. Make sure it connected!")
+end
+monitor.setTextScale(0.5)
