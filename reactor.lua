@@ -198,6 +198,10 @@ function ActionMenu()
 
 end
 
+function rebootSystem()
+	os.reboot()
+end
+
 function buttonControls()
 
 	mon.clear()
