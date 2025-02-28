@@ -280,7 +280,7 @@ function reactorControl()
             emergencyTemp = true
         end
 
-        sleep(0.5) -- Prevents excessive CPU usage
+        sleep(0.2) -- Prevents excessive CPU usage
     end
 end
 
@@ -314,9 +314,17 @@ function toggleReactor()
 end
 
 function ActionMenu()
+	if currentMenu == "action" then return end
 
-	button.setButton("action", action, buttonMain, 2, 23, monX-1, 25, 0, 0, colors.red)
+	currentMenu = "action"
+	
+    MenuText = "ATTENTION"
 
+	clearMenuArea()
+
+	button.setButton("action", action, buttonMain, 5, 28, monX-4, 30, 0, 0, colors.red)
+
+	button.screen()
 end
 
 function rebootSystem()
@@ -354,6 +362,7 @@ function changeOutputValue(num, val)
 	fluxgate.setSignalLowFlow(cFlow)
 	updateReactorInfo()
 end
+
 
 function outputMenu()
     if currentMenu == "output" then return end
