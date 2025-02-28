@@ -388,7 +388,7 @@ function outputMenu()
     local nLength3 = nLength2+2+(string.len("<<")+1)
     button.setButton("-10,000", "<<", changeOutputValue, nLength2+2, 28, nLength3, 30, 10000, 0, colors.blue)
 
-	local nLength4 = nLength3+2+(string.len("<<")+1)
+	local nLength4 = nLength3+2+(string.len("<")+1)
     button.setButton("-1,000", "<", changeOutputValue, nLength3+2, 28, nLength4, 30, 1000, 0, colors.blue)
 
     local sLength4 = 4+(string.len("Back")+1)
