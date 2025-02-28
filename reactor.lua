@@ -9,12 +9,10 @@ local lowFieldPer = 15
 
 local activateOnCharge = true
 
-local version = 0.2
+local version = 0.3
 
 local autoInputGate = 1
 local curInputGate = 222000
-
-
 
 local mon, monitor, monX, monY
 
@@ -30,20 +28,106 @@ local emergencyCharge = false
 local emergencyTemp = false
 
 monitor = f.periphSearch("monitor")
-inputFluxgate = f.periphSearch("flux_gate")
-fluxgate = f.getPeripheral("flux_gate")
-reactor = f.getPeripheral("draconic_reactor")
+-- inputFluxgate = f.periphSearch("flow_gate")
+-- fluxgate = f.getPeripheral("flow_gate")
+reactor = f.periphSearch("draconic_reactor")
+
+function detectFlowGates()
+    local gates = {peripheral.find("flow_gate")}
+    if #gates < 2 then
+        error("Error: Less than 2 flow gates detected!")
+        return nil, nil
+    end
+
+    print("Please set input flow gate to **10 RF/t** manually.")
+
+    local inputGate, outputGate, inputName, outputName
+
+    while not inputGate do
+        sleep(1)  -- Wait before checking again
+
+        for _, name in pairs(peripheral.getNames()) do
+            if peripheral.getType(name) == "flow_gate" then
+                local gate = peripheral.wrap(name)
+                local setFlow = gate.getSignalLowFlow()
+
+                if setFlow == 10 then
+                    inputGate, inputName = gate, name
+                    print("Detected input gate:", name)
+                else
+                    outputGate, outputName = gate, name
+                end
+            end
+        end
+    end
+
+    if not outputGate then
+        print("Error: Could not identify output gate!")
+        return nil, nil
+    end
+
+    return inputGate, outputGate, inputName, outputName
+end
+
+function saveFlowGateNames(inputName, outputName)
+    local file = fs.open("flowgate_names.txt", "w")
+    file.writeLine(inputName)
+    file.writeLine(outputName)
+    file.close()
+    print("Saved flow gate names for reboot!")
+end
+
+function loadFlowGateNames()
+    if not fs.exists("flowgate_names.txt") then
+        print("No saved flow gate names found! Running detection again...")
+        return nil, nil, nil, nil
+    end
+
+    local file = fs.open("flowgate_names.txt", "r")
+    local inputName = file.readLine()
+    local outputName = file.readLine()
+    file.close()
+
+    print("Loaded saved flow gate names:", inputName, outputName)
+
+    if peripheral.isPresent(inputName) and peripheral.isPresent(outputName) then
+        return peripheral.wrap(inputName), peripheral.wrap(outputName), inputName, outputName
+    else
+        print("Saved peripherals not found! Running detection again...")
+        return nil, nil, nil, nil
+    end
+end
+
+function setupFlowGates()
+    -- Try to load saved names
+    local inputFluxgate, outputFluxgate, inputName, outputName = loadFlowGateNames()
+
+    -- If names don't exist, detect manually
+    if not inputFluxgate or not outputFluxgate then
+        inputFluxgate, outputFluxgate, inputName, outputName = detectFlowGates()
+        if inputFluxgate and outputFluxgate then
+            saveFlowGateNames(inputName, outputName)
+        else
+            error("Flow gate setup failed! Make sure to set the input flow gate to 10 before running the script again!")
+            return nil, nil
+        end
+    end
+
+    return inputFluxgate, outputFluxgate
+end
+
+inputFluxgate, fluxgate = setupFlowGates()
 
 if monitor == nil then
 	error("No valid monitor was found")
 end
 
 if fluxgate == nil then
-	error("No valid fluxgate was found")
+	error("No valid flow gate was found")
 end
 
 if inputFluxgate == nil then
-	error("No input fluxgate was found")
+	error("No input flow gate was found. Please put the low signal value to 10")
 end
 
 if reactor == nil then
@@ -73,7 +157,6 @@ end
 
 function load_config()
 	sr = fs.open("reactorconfig.txt", "r")
-	version = sr.readLine()
 	autoInputGate = tonumber(sr.readLine())
 	curInputGate = tonumber(sr.readLine())
 	sr.close()
@@ -106,82 +189,118 @@ function reactorStatus(r)
 	return tbl
 end
 
-function reactorControl()
-	ri = reactor.getReactorInfo()
+local lastTerminalValues = {}
 
-	if ri == nil then
-		error("Reactor not setup correctly")
-	end
+function drawTerminalText(x, y, label, newValue)
+    local key = label  -- Use label as key to track changes
 
-	for k, v in pairs(ri) do
-		print(k..": "..tostring(v))
-	end
-	print("Output Gate: ", fluxgate.getSignalLowFlow())
-	print("Input Gate: ", inputFluxgate.getSignalLowFlow())
-
-	if emergencyCharge == true then
-		reactor.chargeReactor()
-	end
-
-	if ri.status == "warming_up" then
-		inputFluxgate.setSignalLowFlow(900000)
-		emergencyCharge = false
-	end
-
-	if emergencyTemp == true and ri.status == "stopping" and ri.temperature < safeTemp then
-		reactor.activateReactor()
-		emergencyTemp = false
-	end
-
-	if ri.status == "warming_up" and activateOnCharge == true then
-		reactor.activateReactor()
-	end
-
-	if ri.status == "running" then
-		if autoInputGate == 1 then
-			fluxval = ri.fieldDrainRate / (1 - (targetStrength/100))
-			print("Target Gate: "..fluxval)
-			inputFluxgate.setSignalLowFlow(fluxval)
-		else
-			inputFluxgate.setSignalLowFlow(curInputGate)
-		end
-	end
-
-	--safe guards
-	local fuelPercent
-    fuelPercent = 100 - math.ceil(ri.fuelConversion / ri.maxFuelConversion * 10000)*.01
-	
-	local fieldPercent
-    fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000)*.01
-
-    if fuelPercent <= 10 then
-    	reactor.stopReactor()
-    	actioncolor = colors.red
-    	action = "Fuel is low. Refuel"
-    	ActionMenu()
+    -- Only update if the value changed
+    if lastTerminalValues[key] ~= newValue then
+        term.setCursorPos(x, y)
+        term.clearLine()  -- Clear only the current line
+        term.write(label .. ": " .. newValue)
+        lastTerminalValues[key] = newValue  -- Store new value
     end
-
-	if fieldPercent <= lowFieldPer and ri.status == "running" then
-		actioncolor = colors.red
-		action = "Field str < "..lowFieldPer.."%"
-		ActionMenu()
-		reactor.stopReactor()
-		reactor.chargeReactor()
-		emergencyCharge = true
-	end
-
-	if ri.temperature > maxTemp then
-		reactor.stopReactor()
-		actioncolor = colors.red
-		action = "Reactor overheated"
-		ActionMenu()
-		emergencyTemp = true
-	end
-
-	sleep(0.2)
 end
 
+function reactorControl()
+	reset()
+    while true do
+        ri = reactor.getReactorInfo()
+        
+        --reset()
+
+        if ri == nil then
+            error("Reactor not setup correctly")
+        end
+
+		local i = 1
+        for k, v in pairs(ri) do
+            drawTerminalText(1, i, k, tostring(v))
+			i = i + 1
+        end
+		i = i + 1
+		drawTerminalText(1, i, "Output Gate", fluxgate.getSignalLowFlow()) 
+        i = i + 1
+		drawTerminalText(1, i, "Input Gate", inputFluxgate.getSignalLowFlow())
+
+        if emergencyCharge == true then
+            reactor.chargeReactor()
+        end
+
+        if ri.status == "warming_up" then
+            inputFluxgate.setSignalLowFlow(900000)
+            emergencyCharge = false
+        end
+
+        if emergencyTemp == true and ri.status == "stopping" and ri.temperature < safeTemp then
+            reactor.activateReactor()
+            emergencyTemp = false
+        end
+
+        if ri.status == "warming_up" and activateOnCharge == true then
+            reactor.activateReactor()
+        end
+
+        if ri.status == "running" then
+            if autoInputGate == 1 then
+                fluxval = ri.fieldDrainRate / (1 - (targetStrength/100))
+				i = i + 1
+				drawTerminalText(1, i, "Target Gate", fluxval)
+                inputFluxgate.setSignalLowFlow(fluxval)
+            else
+                inputFluxgate.setSignalLowFlow(curInputGate)
+            end
+        end
+
+        -- Safe guards
+        local fuelPercent = 100 - math.ceil(ri.fuelConversion / ri.maxFuelConversion * 10000)*.01
+        local fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000)*.01
+
+        if fuelPercent <= 10 then
+            reactor.stopReactor()
+            actioncolor = colors.red
+            action = "Fuel is low. Refuel"
+            ActionMenu()
+        end
+
+        if fieldPercent <= lowFieldPer and ri.status == "running" then
+            actioncolor = colors.red
+            action = "Field str < "..lowFieldPer.."%"
+            ActionMenu()
+            reactor.stopReactor()
+            reactor.chargeReactor()
+            emergencyCharge = true
+        end
+
+        if ri.temperature > maxTemp then
+            reactor.stopReactor()
+            actioncolor = colors.red
+            action = "Reactor overheated"
+            ActionMenu()
+            emergencyTemp = true
+        end
+
+        sleep(0.5) -- Prevents excessive CPU usage
+    end
+end
+
+
 local MenuText = "Loading..."
+
+function clearMenuArea()
+    -- Ensure we clear enough space for buttons
+    for i = 26, monY-1 do
+        f.draw_line(mon, 2, i, monX-2, colors.black)
+    end
+    button.clearTable() -- Clear stored button references
+
+	f.draw_line(mon, 2, 26, monX-2, colors.gray)  -- Redraw top of the menu box
+	f.draw_line(mon, 2, monY-1, monX-2, colors.gray)  -- Redraw bottom border
+	f.draw_line_y(mon, 2, 26, monY-1, colors.gray)  -- Left border
+	f.draw_line_y(mon, monX-1, 26, monY-1, colors.gray)  -- Right border
+	f.draw_text(mon, 4, 26, " "..MenuText.." ", colors.white, colors.black)
+end
 
 function toggleReactor()
 	ri = reactor.getReactorInfo()
@@ -206,23 +325,23 @@ function rebootSystem()
 end
 
 function buttonControls()
-
-	mon.clear()
-	button.clearTable()
-
-	MenuText = "CONTROLS"
-
-	local sLength = 4+(string.len("Toggle Reactor")+1)
-
-	button.setButton("toggle", "Toggle Reactor", toggleReactor, 4, 28, sLength, 30, 0, 0, colors.blue)
-
-	local sLength2 = (sLength+10+(string.len("Reboot")+1))
-	button.setButton("reboot", "Reboot", rebootSystem, sLength+10, 28, sLength2, 30, 0, 0, colors.blue)
-
-	local sLength3 = 4+(string.len("Back")+1)
-	button.setButton("back", "Back", buttonMain, 4, 32, sLength3, 34, 0, 0, colors.blue)
+    if currentMenu == "controls" then return end
+    currentMenu = "controls"
 	
-	button.screen()
+    MenuText = "CONTROLS"
+
+    clearMenuArea() -- Clear old buttons
+
+    local sLength = 6+(string.len("Toggle Reactor")+1)
+    button.setButton("toggle", "Toggle Reactor", toggleReactor, 6, 28, sLength, 30, 0, 0, colors.blue)
+
+    local sLength2 = (sLength+12+(string.len("Reboot"))+1)
+    button.setButton("reboot", "Reboot", rebootSystem, sLength+12, 28, sLength2, 30, 0, 0, colors.blue)
+
+    local sLength3 = 4+(string.len("Back")+1)
+    button.setButton("back", "Back", buttonMain, 4, 32, sLength3, 34, 0, 0, colors.blue)
+
+    button.screen()
 end
 
 function changeOutputValue(num, val)
@@ -234,141 +353,153 @@ function changeOutputValue(num, val)
 		cFlow = cFlow-num
 	end
 	fluxgate.setSignalLowFlow(cFlow)
+	updateReactorInfo()
 end
 
 function outputMenu()
-
-	button.clearTable()
+    if currentMenu == "output" then return end
+    currentMenu = "output"
 
 	MenuText = "OUTPUT"
 
-	local sLengthX = monX-3-(string.len(">>>")+1)
-	local sLength = sLengthX+string.len(">>>")+1
-	button.setButton("+100,000", ">>>", changeOutputValue, sLengthX, 28, sLength, 30, 100000, 1, colors.blue)
-	
-	local sLengthX2 = sLengthX-3-string.len(">>")
-	local sLength2 = sLengthX2+string.len(">>")+1
-	button.setButton("+10,000", ">>", changeOutputValue, sLengthX2, 28, sLength2, 30, 10000, 1, colors.blue)
+    clearMenuArea() -- Clear old buttons
 
-	local sLengthX3 = sLengthX2-3-string.len(">")
-	local sLength3 = sLengthX3+string.len(">")+1
-	button.setButton("+1,000", ">", changeOutputValue, sLengthX3, 28, sLength3, 30, 1000, 1, colors.blue)
-	
+    local sLengthX = monX-3-(string.len(">>>")+1)
+    local sLength = sLengthX+string.len(">>>")+1
+    button.setButton("+100,000", ">>>", changeOutputValue, sLengthX, 28, sLength, 30, 100000, 1, colors.blue)
 
-	local nLength = 4+(string.len("<<<")+1)
-	button.setButton("-100,000", "<<<", changeOutputValue, 4, 28, nLength, 30, 100000, 0, colors.blue)
+    local sLengthX2 = sLengthX-3-string.len(">>")
+    local sLength2 = sLengthX2+string.len(">>")+1
+    button.setButton("+10,000", ">>", changeOutputValue, sLengthX2, 28, sLength2, 30, 10000, 1, colors.blue)
 
-	local nLength2 = nLength+2+(string.len("<<")+1)
-	button.setButton("-10,000", "<<", changeOutputValue, nLength+2, 28, nLength2, 30, 10000, 0, colors.blue)
+    local sLengthX3 = sLengthX2-3-string.len(">")
+    local sLength3 = sLengthX3+string.len(">")+1
+    button.setButton("+1,000", ">", changeOutputValue, sLengthX3, 28, sLength3, 30, 1000, 1, colors.blue)
 
-	local nLength3 = nLength2+2+(string.len("<")+1)
-	button.setButton("-1,000", "<", changeOutputValue, nLength2+2, 28, nLength3, 30, 1000, 0, colors.blue)
-	
-	local sLength4 = 4+(string.len("Back")+1)
-	button.setButton("back", "Back", buttonMain, 4, 32, sLength4, 34, 0, 0, colors.blue)
-	
+    local nLength = 4+(string.len("<<<")+1)
+    button.setButton("-100,000", "<<<", changeOutputValue, 4, 28, nLength, 30, 100000, 0, colors.blue)
 
+    local nLength2 = nLength+2+(string.len("<<")+1)
+    button.setButton("-10,000", "<<", changeOutputValue, nLength+2, 28, nLength2, 30, 10000, 0, colors.blue)
+
+    local nLength3 = nLength2+2+(string.len("<")+1)
+    button.setButton("-1,000", "<", changeOutputValue, nLength2+2, 28, nLength3, 30, 1000, 0, colors.blue)
+
+    local sLength4 = 4+(string.len("Back")+1)
+    button.setButton("back", "Back", buttonMain, 4, 32, sLength4, 34, 0, 0, colors.blue)
+
+    button.screen()
 end
 
 function buttonMain()
+    if currentMenu == "main" then return end
+    currentMenu = "main"
 
-	mon.clear()
-	button.clearTable()
+    MenuText = "MAIN MENU"
 
-	MenuText = "MAIN MENU"
+    clearMenuArea() -- Clear old buttons
 
-	local sLength = 4+(string.len("Controls")+1)
-	button.setButton("controls", "Controls", buttonControls, 4, 28, sLength, 30, 0, 0, colors.blue)
+    local sLength = 4+(string.len("Controls")+1)
+    button.setButton("controls", "Controls", buttonControls, 4, 28, sLength, 30, 0, 0, colors.blue)
 
-	local sLength2 = (sLength+13+(string.len("Output"))+1)
-	button.setButton("output", "Output", outputMenu, sLength+13, 28, sLength2, 30, 0, 0, colors.blue)
+    local sLength2 = (sLength+13+(string.len("Output"))+1)
+    button.setButton("output", "Output", outputMenu, sLength+13, 28, sLength2, 30, 0, 0, colors.blue)
 
-	button.screen()
-
+    button.screen()
 end
 
+local lastValues = {}
+
 function reactorInfoScreen()
+    mon.clear()
 
-	reset()
-	mon.clear()
+    f.draw_text(mon, 2, 38, "Made by: StormFusions  v"..version, colors.gray, colors.black)
 
-	f.draw_text(mon, 2, 38, "Made by: StormFusions  v"..version, colors.gray, colors.black)
+    -- Draw Static UI Elements (Frames, Labels)
+    f.draw_line(mon, 2, 22, monX-2, colors.gray)
+    f.draw_line(mon, 2, 2, monX-2, colors.gray)
+    f.draw_line_y(mon, 2, 2, 22, colors.gray)
+    f.draw_line_y(mon, monX-1, 2, 22, colors.gray)
+    f.draw_text(mon, 4, 2, " INFO ", colors.white, colors.black)
 
-	--Info Box
-	f.draw_line(mon, 2, 22, monX-2, colors.gray)
-	f.draw_line(mon, 2, 2, monX-2, colors.gray)
+    f.draw_line(mon, 2, 26, monX-2, colors.gray)
+    f.draw_line(mon, 2, monY-1, monX-2, colors.gray)
+    f.draw_line_y(mon, 2, 26, monY-1, colors.gray)
+    f.draw_line_y(mon, monX-1, 26, monY-1, colors.gray)
+    f.draw_text(mon, 4, 26, " "..MenuText.." ", colors.white, colors.black)
+
+    -- Loop to continuously update screen
+    while true do
+        updateReactorInfo()
+        sleep(1)
+    end
+end
+
+
+function updateReactorInfo()
+    ri = reactor.getReactorInfo()
 	
-	f.draw_line_y(mon, 2, 2, 22, colors.gray)
-	f.draw_line_y(mon, monX-1, 2, 22, colors.gray)
-	f.draw_text(mon, 4, 2, " INFO ", colors.white, colors.black)
+    if not ri then return end
 
-	--Button Box
-	f.draw_line(mon, 2, 26, monX-2, colors.gray)
-	f.draw_line(mon, 2, monY-1, monX-2, colors.gray)
+    -- Update only when values change
+    drawUpdatedText(4, 4, "Status:", reactorStatus(ri.status)[1], reactorStatus(ri.status)[2])
+    drawUpdatedText(4, 5, "Generation:", f.format_int(ri.generationRate).." rf/t", colors.lime)
 
-	f.draw_line_y(mon, 2, 26, monY-1, colors.gray)
-	f.draw_line_y(mon, monX-1, 26, monY-1, colors.gray)
-	f.draw_text(mon, 4, 26, " "..MenuText.." ", colors.white, colors.black)
+    local tempColor = getTempColor(ri.temperature)
+    drawUpdatedText(4, 7, "Temperature:", f.format_int(ri.temperature).."C", tempColor)
 
-	--f.draw_text(mon, 5, 28, MenuText, colors.white, colors.black)
+    drawUpdatedText(4, 9, "Output Gate:", f.format_int(fluxgate.getSignalLowFlow()).." rf/t", colors.lightBlue)
+    drawUpdatedText(4, 10, "Input Gate:", f.format_int(inputFluxgate.getSignalLowFlow()).." rf/t", colors.lightBlue)
 
-	ri = reactor.getReactorInfo()
+    local satPercent = getPercentage(ri.energySaturation, ri.maxEnergySaturation)
+    drawUpdatedText(4, 12, "Energy Saturation:", satPercent.."%", colors.green)
+    f.progress_bar(mon, 4, 13, monX-7, satPercent, 100, colors.green, colors.lightGray)
 
-	local stat = reactorStatus(ri.status)
-	
-	f.draw_text_lr(mon, 4, 4, 3, "Status:", stat[1], colors.white, stat[2], colors.black)
-	f.draw_text_lr(mon, 4, 5, 3, "Generation:", f.format_int(ri.generationRate).." rf/t", colors.white, colors.lime, colors.black)
-	
-	local tempColor = colors.red
-	if ri.temperature <= 5000 then tempColor = colors.green end
-	if ri.temperature >= 5000 and ri.temperature <= 6500 then tempColor = colors.orange end
-	f.draw_text_lr(mon, 4, 7, 3, "Temperature:", f.format_int(ri.temperature).."C", colors.white, tempColor, colors.black)
+    local fieldPercent = getPercentage(ri.fieldStrength, ri.maxFieldStrength)
+    local fieldColor = getFieldColor(fieldPercent)
+    drawUpdatedText(4, 15, "Field Strength:", fieldPercent.."%", fieldColor)
+    f.progress_bar(mon, 4, 16, monX-7, fieldPercent, 100, fieldColor, colors.lightGray)
 
-	f.draw_text_lr(mon, 4, 9, 3, "Output Gate:", f.format_int(fluxgate.getSignalLowFlow()).." rf/t", colors.white, colors.lightBlue, colors.black)
-	f.draw_text_lr(mon, 4, 10, 3, "Input Gate:", f.format_int(inputFluxgate.getSignalLowFlow()).." rf/t", colors.white, colors.lightBlue, colors.black)
-	
-	local satPercent 
-	satPercent = math.ceil(ri.energySaturation / ri.maxEnergySaturation * 10000)*.01
+    local fuelPercent = 100 - getPercentage(ri.fuelConversion, ri.maxFuelConversion)
+    local fuelColor = getFuelColor(fuelPercent)
+    drawUpdatedText(4, 18, "Fuel:", fuelPercent.."%", fuelColor)
+    f.progress_bar(mon, 4, 19, monX-7, fuelPercent, 100, fuelColor, colors.lightGray)
+end
 
-	f.draw_text_lr(mon, 4, 12, 3, "Energy Saturation:", satPercent.."%", colors.white, colors.green, colors.black)
-	f.progress_bar(mon, 4, 13, monX-7, satPercent, 100, colors.green, colors.lightGray)
+function drawUpdatedText(x, y, label, value, color)
+    local key = label
+    if lastValues[key] ~= value then
+		f.draw_text(mon, x, y, "       ", colors.white, colors.black)
+        f.draw_text_lr(mon, x, y, 3, label, value, colors.white, color, colors.black)
+        lastValues[key] = value
+    end
+end
 
-	local fieldPercent, fieldColor
-	fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000)*.01
+function getTempColor(temp)
+    if temp <= 5000 then return colors.green end
+    if temp <= 6500 then return colors.orange end
+    return colors.red
+end
 
-	fieldColor = colors.red
-	if fieldPercent >= 50 then fieldColor = colors.blue end
-	if fieldPercent < 50 and fieldPercent > 30 then fieldColor = colors.orange end
+function getFieldColor(percent)
+    if percent >= 50 then return colors.blue end
+    if percent > 30 then return colors.orange end
+    return colors.red
+end
 
-	if autoInputGate == 1 then
-		f.draw_text_lr(mon, 4, 15, 3, "Field Strength T:"..targetStrength, fieldPercent.."%", colors.white, fieldColor, colors.black)
-	else
-		f.draw_text_lr(mon, 4, 15, 3, "Field Strength:", fieldPercent.."%", colors.white, fieldColor, colors.black)
-	end
-	f.progress_bar(mon, 4, 16, monX-7, fieldPercent, 100, fieldColor, colors.lightGray)
+function getFuelColor(percent)
+    if percent >= 70 then return colors.green end
+    if percent > 30 then return colors.orange end
+    return colors.red
+end
 
-	local fuelPercent, fuelColor
-	fuelPercent = 100 - math.ceil(ri.fuelConversion / ri.maxFuelConversion * 10000)*.01
-
-	fuelColor = colors.red
-	if fuelPercent >=70 then fuelColor = colors.green end
-	if fuelPercent < 70 and fuelPercent > 30 then fuelColor = colors.orange end
-
-	f.draw_text_lr(mon, 4, 18, 3, "Fuel:", fuelPercent.."%", colors.white, fuelColor, colors.black)
-
-	f.progress_bar(mon, 4, 19, monX-7, fuelPercent, 100, fuelColor, colors.lightGray)
-
-	sleep(1.25)
-
-	while true do
-		parallel.waitForAny(reactorInfoScreen, reactorControl, button.clickEvent)
-	end
-
+function getPercentage(value, maxValue)
+    return math.ceil(value / maxValue * 10000) * 0.01
 end
 
 mon.clear()
 mon.monitor.setTextScale(0.5)
 
-buttonMain()
+buttonMain() -- Initialize buttons before the event listener
 
-reactorInfoScreen()
+parallel.waitForAny(reactorInfoScreen, reactorControl, button.clickEvent)

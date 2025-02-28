@@ -75,6 +75,8 @@ function checkxy(x, y)
 end
 
 function clickEvent()
-   local myEvent={os.pullEvent("monitor_touch")}
-   checkxy(myEvent[3], myEvent[4])
+   while true do
+      local myEvent={os.pullEvent("monitor_touch")}
+      checkxy(myEvent[3], myEvent[4])
+   end
 end
