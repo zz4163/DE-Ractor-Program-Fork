@@ -149,7 +149,6 @@ end
 
 function save_config()
 	sw = fs.open("reactorconfig.txt", "w")
-	sw.writeLine(version)
 	sw.writeLine(autoInputGate)
 	sw.writeLine(curInputGate)
 	sw.close()
@@ -469,7 +468,7 @@ end
 function drawUpdatedText(x, y, label, value, color)
     local key = label
     if lastValues[key] ~= value then
-		f.draw_text(mon, x, y, "       ", colors.white, colors.black)
+		f.draw_text_lr(mon, x, y, 3, "          ", "             ", colors.white, color, colors.black)
         f.draw_text_lr(mon, x, y, 3, label, value, colors.white, color, colors.black)
         lastValues[key] = value
     end
