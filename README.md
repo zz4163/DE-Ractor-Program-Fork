@@ -29,5 +29,5 @@ Keep this as startup so if there any updates to the program it automatically upd
 # For 1.12.2
 If you still using the 1.12.2 install of draconic evolution then please read [this!](https://github.com/StormFusions/Draconic-ComputerCraft-Program/blob/1.12.2/README.md)
 
-#Credit
-Credit to acidjazz for f API and some of the code to make this work.
+# Credit
+Credit to [acidjazz](https://github.com/acidjazz) for f API and some of the code to make this work.
