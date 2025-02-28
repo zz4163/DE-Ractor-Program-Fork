@@ -363,26 +363,33 @@ function outputMenu()
 
     clearMenuArea() -- Clear old buttons
 
-    local sLengthX = monX-3-(string.len(">>>")+1)
-    local sLength = sLengthX+string.len(">>>")+1
-    button.setButton("+100,000", ">>>", changeOutputValue, sLengthX, 28, sLength, 30, 100000, 1, colors.blue)
+    local sLengthX = monX-3-(string.len(">>>>")+1)
+    local sLength = sLengthX+string.len(">>>>")+1
+    button.setButton("+1,000,000", ">>>>", changeOutputValue, sLengthX, 28, sLength, 30, 1000000, 1, colors.blue)
 
-    local sLengthX2 = sLengthX-3-string.len(">>")
-    local sLength2 = sLengthX2+string.len(">>")+1
-    button.setButton("+10,000", ">>", changeOutputValue, sLengthX2, 28, sLength2, 30, 10000, 1, colors.blue)
+    local sLengthX2 = sLengthX-3-string.len(">>>")
+    local sLength2 = sLengthX2+string.len(">>>")+1
+    button.setButton("+100,000", ">>>", changeOutputValue, sLengthX2, 28, sLength2, 30, 100000, 1, colors.blue)
 
-    local sLengthX3 = sLengthX2-3-string.len(">")
-    local sLength3 = sLengthX3+string.len(">")+1
-    button.setButton("+1,000", ">", changeOutputValue, sLengthX3, 28, sLength3, 30, 1000, 1, colors.blue)
+    local sLengthX3 = sLengthX2-3-string.len(">>")
+    local sLength3 = sLengthX3+string.len(">>")+1
+    button.setButton("+10,000", ">>", changeOutputValue, sLengthX3, 28, sLength3, 30, 10000, 1, colors.blue)
 
-    local nLength = 4+(string.len("<<<")+1)
-    button.setButton("-100,000", "<<<", changeOutputValue, 4, 28, nLength, 30, 100000, 0, colors.blue)
+    local sLengthX4 = sLengthX3-3-string.len(">")
+    local sLength4 = sLengthX4+string.len(">")+1
+    button.setButton("+1,000", ">", changeOutputValue, sLengthX4, 28, sLength4, 30, 1000, 1, colors.blue)
 
-    local nLength2 = nLength+2+(string.len("<<")+1)
-    button.setButton("-10,000", "<<", changeOutputValue, nLength+2, 28, nLength2, 30, 10000, 0, colors.blue)
+    local nLength = 4+(string.len("<<<<")+1)
+    button.setButton("-1,000,000", "<<<<", changeOutputValue, 4, 28, nLength, 30, 1000000, 0, colors.blue)
 
-    local nLength3 = nLength2+2+(string.len("<")+1)
-    button.setButton("-1,000", "<", changeOutputValue, nLength2+2, 28, nLength3, 30, 1000, 0, colors.blue)
+    local nLength2 = nLength+2+(string.len("<<<")+1)
+    button.setButton("-100,000", "<<<", changeOutputValue, nLength+2, 28, nLength2, 30, 100000, 0, colors.blue)
+
+    local nLength3 = nLength2+2+(string.len("<<")+1)
+    button.setButton("-10,000", "<<", changeOutputValue, nLength2+2, 28, nLength3, 30, 10000, 0, colors.blue)
+
+	local nLength4 = nLength3+2+(string.len("<<")+1)
+    button.setButton("-1,000", "<", changeOutputValue, nLength3+2, 28, nLength4, 30, 1000, 0, colors.blue)
 
     local sLength4 = 4+(string.len("Back")+1)
     button.setButton("back", "Back", buttonMain, 4, 32, sLength4, 34, 0, 0, colors.blue)
