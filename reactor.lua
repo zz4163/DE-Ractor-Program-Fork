@@ -3,7 +3,7 @@ os.loadAPI("lib/f")
 os.loadAPI("lib/button")
 
 local targetStrength = 50
-local maxTemp = 8000
+local maxTemp = 7750
 local safeTemp = 3000
 local lowFieldPer = 15
 
@@ -173,19 +173,16 @@ function reset()
 end
 
 function reactorStatus(r)
-	local tbl = {}
-	if r == "running" then
-		tbl = {"Online", colors.green}
-	elseif r == "cold" then
-		tbl = {"Offline", colors.gray}
-	elseif r =="warming_up" then
-		tbl = {"Charging", colors.orange}
-	elseif r == "cooling" then
-		tbl = {"Cooling Down", colors.blue}
-	else
-		tbl = {"Shutting Down", colors.red}
-	end
-	return tbl
+    local statusTable = {
+        running = {"Online", colors.green},
+        cold = {"Offline", colors.gray},
+        warming_up = {"Charging", colors.orange},
+        cooling = {"Cooling Down", colors.blue},
+        stopping = {"Shutting Down", colors.red} -- Default case
+    }
+
+    -- Return status or default to "Shutting Down"
+    return statusTable[r] or statusTable["stopping"]
 end
 
 local lastTerminalValues = {}
@@ -203,87 +200,83 @@ function drawTerminalText(x, y, label, newValue)
 end
 
 function reactorControl()
-	reset()
-    while true do
-        ri = reactor.getReactorInfo()
-        
-        --reset()
+    reset() -- Clear the terminal once at startup
 
-        if ri == nil then
-            error("Reactor not setup correctly")
+    while true do
+        local ri = reactor.getReactorInfo()
+        if not ri then
+            print("Reactor not setup correctly. Retrying in 2s...")
+            sleep(2)
+            goto continue
         end
 
-		local i = 1
+        -- Update terminal output
+        local i = 1
         for k, v in pairs(ri) do
             drawTerminalText(1, i, k, tostring(v))
-			i = i + 1
+            i = i + 1
         end
-		i = i + 1
-		drawTerminalText(1, i, "Output Gate", fluxgate.getSignalLowFlow()) 
         i = i + 1
-		drawTerminalText(1, i, "Input Gate", inputFluxgate.getSignalLowFlow())
+        drawTerminalText(1, i, "Output Gate", fluxgate.getSignalLowFlow()) 
+        i = i + 1
+        drawTerminalText(1, i, "Input Gate", inputFluxgate.getSignalLowFlow())
 
-        if emergencyCharge == true then
+        -- Reactor Control Logic
+        if emergencyCharge then
             reactor.chargeReactor()
         end
 
         if ri.status == "warming_up" then
             inputFluxgate.setSignalLowFlow(900000)
             emergencyCharge = false
-        end
-
-        if emergencyTemp == true and ri.status == "stopping" and ri.temperature < safeTemp then
+        elseif ri.status == "stopping" and ri.temperature < safeTemp and emergencyTemp then
             reactor.activateReactor()
             emergencyTemp = false
-        end
-
-        if ri.status == "warming_up" and activateOnCharge == true then
+        elseif ri.status == "warming_up" and activateOnCharge then
             reactor.activateReactor()
         end
 
+        -- Auto-adjust power flow
         if ri.status == "running" then
-            if autoInputGate == 1 then
-                fluxval = ri.fieldDrainRate / (1 - (targetStrength/100))
-				i = i + 1
-				drawTerminalText(1, i, "Target Gate", fluxval)
-                inputFluxgate.setSignalLowFlow(fluxval)
-            else
-                inputFluxgate.setSignalLowFlow(curInputGate)
-            end
+            local fluxval = autoInputGate == 1 
+                and ri.fieldDrainRate / (1 - (targetStrength / 100)) 
+                or curInputGate
+
+            i = i + 1
+            drawTerminalText(1, i, "Target Gate", fluxval)
+            inputFluxgate.setSignalLowFlow(fluxval)
         end
 
-        -- Safe guards
-        local fuelPercent = 100 - math.ceil(ri.fuelConversion / ri.maxFuelConversion * 10000)*.01
-        local fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000)*.01
+        -- Emergency Safeguards
+        checkReactorSafety(ri)
 
-        if fuelPercent <= 10 then
-            reactor.stopReactor()
-            actioncolor = colors.red
-            action = "Fuel is low. Refuel"
-            ActionMenu()
-        end
-
-        if fieldPercent <= lowFieldPer and ri.status == "running" then
-            actioncolor = colors.red
-            action = "Field str < "..lowFieldPer.."%"
-            ActionMenu()
-            reactor.stopReactor()
-            reactor.chargeReactor()
-            emergencyCharge = true
-        end
-
-        if ri.temperature > maxTemp then
-            reactor.stopReactor()
-            actioncolor = colors.red
-            action = "Reactor overheated"
-            ActionMenu()
-            emergencyTemp = true
-        end
-
-        sleep(0.2) -- Prevents excessive CPU usage
+        sleep(0.2) -- Keeps CPU usage low while maintaining constant monitoring
+        ::continue::
     end
 end
 
+function checkReactorSafety(ri)
+    local fuelPercent = 100 - math.ceil(ri.fuelConversion / ri.maxFuelConversion * 10000) * 0.01
+    local fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000) * 0.01
+
+    if fuelPercent <= 10 then
+        emergencyShutdown("Fuel Low! Refuel Now!")
+    elseif fieldPercent <= lowFieldPer and ri.status == "running" then
+        emergencyShutdown("Field Strength Below "..lowFieldPer.."%!")
+        reactor.chargeReactor()
+        emergencyCharge = true
+    elseif ri.temperature > maxTemp then
+        emergencyShutdown("Reactor Overheated!")
+        emergencyTemp = true
+    end
+end
+
+function emergencyShutdown(message)
+    reactor.stopReactor()
+    actioncolor = colors.red
+    action = message
+    ActionMenu()
+end
 
 local MenuText = "Loading..."
 
@@ -314,8 +307,6 @@ function toggleReactor()
 end
 
 function ActionMenu()
-	if currentMenu == "action" then return end
-
 	currentMenu = "action"
 	
     MenuText = "ATTENTION"
@@ -368,43 +359,46 @@ function outputMenu()
     if currentMenu == "output" then return end
     currentMenu = "output"
 
-	MenuText = "OUTPUT"
+    MenuText = "OUTPUT"
 
     clearMenuArea() -- Clear old buttons
 
-    local sLengthX = monX-3-(string.len(">>>>")+1)
-    local sLength = sLengthX+string.len(">>>>")+1
-    button.setButton("+1,000,000", ">>>>", changeOutputValue, sLengthX, 28, sLength, 30, 1000000, 1, colors.blue)
+    -- Define button data (Label, Value, Change Type)
+    local buttonData = {
+        {label = ">>>>", value = 1000000, changeType = 1}, -- +1,000,000
+        {label = ">>>", value = 100000, changeType = 1},   -- +100,000
+        {label = ">>", value = 10000, changeType = 1},     -- +10,000
+        {label = ">", value = 1000, changeType = 1},       -- +1,000
+        {label = "<", value = 1000, changeType = 0},       -- -1,000
+        {label = "<<", value = 10000, changeType = 0},     -- -10,000
+        {label = "<<<", value = 100000, changeType = 0},   -- -100,000
+        {label = "<<<<", value = 1000000, changeType = 0}, -- -1,000,000
+    }
 
-    local sLengthX2 = sLengthX-3-string.len(">>>")
-    local sLength2 = sLengthX2+string.len(">>>")+1
-    button.setButton("+100,000", ">>>", changeOutputValue, sLengthX2, 28, sLength2, 30, 100000, 1, colors.blue)
+    -- Determine the starting X position dynamically
+    local spacing = 2
+    local buttonY = 28  -- Button row position
 
-    local sLengthX3 = sLengthX2-3-string.len(">>")
-    local sLength3 = sLengthX3+string.len(">>")+1
-    button.setButton("+10,000", ">>", changeOutputValue, sLengthX3, 28, sLength3, 30, 10000, 1, colors.blue)
+    -- Add buttons dynamically
+    local currentX = monX - 7
+    for _, data in ipairs(buttonData) do
+        local buttonLength = string.len(data.label) + 1
+        local startX = currentX - buttonLength
+        local endX = startX + buttonLength
 
-    local sLengthX4 = sLengthX3-3-string.len(">")
-    local sLength4 = sLengthX4+string.len(">")+1
-    button.setButton("+1,000", ">", changeOutputValue, sLengthX4, 28, sLength4, 30, 1000, 1, colors.blue)
+        button.setButton(data.label, data.label, changeOutputValue, startX, buttonY, endX, buttonY + 2, data.value, data.changeType, colors.blue)
 
-    local nLength = 4+(string.len("<<<<")+1)
-    button.setButton("-1,000,000", "<<<<", changeOutputValue, 4, 28, nLength, 30, 1000000, 0, colors.blue)
+        currentX = currentX - buttonLength - spacing  -- Move left for the next button
+    end
 
-    local nLength2 = nLength+2+(string.len("<<<")+1)
-    button.setButton("-100,000", "<<<", changeOutputValue, nLength+2, 28, nLength2, 30, 100000, 0, colors.blue)
+    -- Add "Back" button at the bottom
+    local backLength = 4 + string.len("Back") + 1
+    button.setButton("back", "Back", buttonMain, 4, 32, backLength, 34, 0, 0, colors.blue)
 
-    local nLength3 = nLength2+2+(string.len("<<")+1)
-    button.setButton("-10,000", "<<", changeOutputValue, nLength2+2, 28, nLength3, 30, 10000, 0, colors.blue)
-
-	local nLength4 = nLength3+2+(string.len("<")+1)
-    button.setButton("-1,000", "<", changeOutputValue, nLength3+2, 28, nLength4, 30, 1000, 0, colors.blue)
-
-    local sLength4 = 4+(string.len("Back")+1)
-    button.setButton("back", "Back", buttonMain, 4, 32, sLength4, 34, 0, 0, colors.blue)
-
+    -- Refresh screen
     button.screen()
 end
+
 
 function buttonMain()
     if currentMenu == "main" then return end
