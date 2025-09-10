@@ -498,7 +498,7 @@ end
 
 function getFuelColor(percent)
     if percent >= 70 then return colors.green end
-    if percent > 30 then return colors.orange end
+    if percent > 25 then return colors.orange end
     return colors.red
 end
 
