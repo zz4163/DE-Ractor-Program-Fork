@@ -259,7 +259,7 @@ function checkReactorSafety(ri)
     local fuelPercent = 100 - math.ceil(ri.fuelConversion / ri.maxFuelConversion * 10000) * 0.01
     local fieldPercent = math.ceil(ri.fieldStrength / ri.maxFieldStrength * 10000) * 0.01
 
-    if fuelPercent <= 10 then
+    if fuelPercent <= 15 then
         emergencyShutdown("Fuel Low! Refuel Now!")
     elseif fieldPercent <= lowFieldPer and ri.status == "running" then
         emergencyShutdown("Field Strength Below "..lowFieldPer.."%!")
