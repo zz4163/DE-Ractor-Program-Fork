@@ -2,10 +2,10 @@
 os.loadAPI("lib/f")
 os.loadAPI("lib/button")
 
-local targetStrength = 50
-local maxTemp = 7750
+local targetStrength = 20
+local maxTemp = 9000
 local safeTemp = 3000
-local lowFieldPer = 15
+local lowFieldPer = 3
 
 local activateOnCharge = true
 
