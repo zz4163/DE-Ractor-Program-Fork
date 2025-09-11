@@ -440,7 +440,7 @@ function reactorInfoScreen()
     -- Loop to continuously update screen
     while true do
         updateReactorInfo()
-        sleep(0.4)
+        sleep(0.1)
     end
 end
 
