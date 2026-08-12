@@ -9,8 +9,8 @@ local reactorPrograms = {
         name = "Reactor 1",
         description = "4B RF/t Script",
         url =
-            "https://raw.githubusercontent.com/zz4163/DE-Ractor-Program-Fork/refs/heads/main/reactor.lua",
-        file = "reactor.lua"
+            "https://raw.githubusercontent.com/zz4163/DE-Ractor-Program-Fork/refs/heads/main/reactor1.lua",
+        file = "reactor1.lua"
     },
 
     {
