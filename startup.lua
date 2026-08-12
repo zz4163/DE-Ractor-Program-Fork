@@ -1,168 +1,85 @@
-local libURL =
-    "https://raw.githubusercontent.com/StormFusions/Draconic-ComputerCraft-Program/main/lib/f.lua"
-
-local libURL2 =
-    "https://raw.githubusercontent.com/StormFusions/Draconic-ComputerCraft-Program/main/lib/button.lua"
-
-local reactorPrograms = {
-    {
-        name = "Reactor 1",
-        description = "4B RF/t Script",
-        url =
-            "https://raw.githubusercontent.com/zz4163/DE-Ractor-Program-Fork/refs/heads/main/reactor1.lua",
-        file = "reactor1.lua"
-    },
-
-    {
-        name = "Reactor 2",
-        description = "Original Script",
-        url =
-            "https://raw.githubusercontent.com/zz4163/DE-Ractor-Program-Fork/refs/heads/main/reactor2.lua",
-        file = "reactor2.lua"
-    }
-}
-
-local function updateFile(url, filePath, displayName)
-    print("Checking " .. displayName .. "...")
-
-    local response = http.get(url)
-
-    if not response then
-        error(
-            "Unable to download " ..
-            displayName ..
-            ".\nCheck your internet connection and URL."
-        )
-    end
-
-    local remoteFile = response.readAll()
-    response.close()
-
-    if not fs.exists(filePath) then
-        local file = fs.open(filePath, "w")
-
-        if not file then
-            error("Unable to create " .. filePath)
-        end
-
-        file.write(remoteFile)
-        file.close()
-
-        print(displayName .. " downloaded.")
-        return
-    end
-
-    local file = fs.open(filePath, "r")
-
-    if not file then
-        error("Unable to read " .. filePath)
-    end
-
-    local localFile = file.readAll()
-    file.close()
-
-    if remoteFile ~= localFile then
-        local updateFile = fs.open(filePath, "w")
-
-        if not updateFile then
-            error("Unable to update " .. filePath)
-        end
-
-        updateFile.write(remoteFile)
-        updateFile.close()
-
-        print(displayName .. " updated.")
-    else
-        print(displayName .. " up to date.")
-    end
-end
-
+local libURL = "https://raw.githubusercontent.com/StormFusions/Draconic-ComputerCraft-Program/main/lib/f.lua"
+local libURL2 = "https://raw.githubusercontent.com/StormFusions/Draconic-ComputerCraft-Program/main/lib/button.lua"
+local startupURL = "https://raw.githubusercontent.com/zz4163/DE-Ractor-Program-Fork/refs/heads/main/reactor.lua"
+local lib, lib2, startup
+local libFile, lib2File, startupFile
+ 
 fs.makeDir("lib")
-
-updateFile(
-    libURL,
-    "lib/f",
-    "API F"
-)
-
-updateFile(
-    libURL2,
-    "lib/button",
-    "API Button"
-)
-
-local function showMenu()
-    term.clear()
-    term.setCursorPos(1, 1)
-
-    print("================================")
-    print("     DRACONIC REACTOR CONTROL")
-    print("================================")
-    print("")
-
-    for i, reactor in ipairs(reactorPrograms) do
-        print(
-            tostring(i) ..
-            ". " ..
-            reactor.name
-        )
-
-        print("")
+ 
+lib = http.get(libURL)
+libFile = lib.readAll()
+ 
+if fs.exists("lib/f") == false then
+    local file1 = fs.open("lib/f", "w")
+    file1.write(libFile)
+    file1.close()
+    print("API F downloaded")
+else
+    local file1 = fs.open("lib/f", "r")
+    local f = file1.readAll()
+    if libFile ~= f then
+        file1.close()
+        local file2 = fs.open("lib/f", "w")
+        file2.write(libFile)
+        file2.close()
+        
+        print("API F updating...")
+    else
+        file1.close()
+        print("API F up to date")
     end
-
-    print("Enter the desired reactor number.")
-    print("")
-
-    write("Selection: ")
-
-    local input = read()
-
-    return tonumber(input)
 end
-
-local selectedIndex
-
-while true do
-    selectedIndex = showMenu()
-
-    if selectedIndex
-        and reactorPrograms[selectedIndex] then
-        break
+ 
+lib2 = http.get(libURL2)
+lib2File = lib2.readAll()
+ 
+if fs.exists("lib/button") == false then
+    local file1 = fs.open("lib/button", "w")
+    file1.write(lib2File)
+    file1.close()
+    print("API Button downloaded")
+else
+    local file1 = fs.open("lib/button", "r")
+    local b = file1.readAll()
+    if lib2File ~= b then
+        file1.close()
+        local file2 = fs.open("lib/button", "w")
+        file2.write(lib2File)
+        file2.close()
+        
+        print("API Button updating...")
+    else
+        file1.close()
+        print("API Button up to date")
     end
-
-    print("")
-    print("Invalid selection.")
-    print("Please choose one of the available reactors.")
-    sleep(2)
 end
-
-local selectedReactor =
-    reactorPrograms[selectedIndex]
-
-print("")
-print(
-    "Selected: " ..
-    selectedReactor.name
-)
-
-print("")
-
-updateFile(
-    selectedReactor.url,
-    selectedReactor.file,
-    selectedReactor.name
-)
-
-print("")
-print("Finished.")
-print(
-    "Starting " ..
-    selectedReactor.name ..
-    "..."
-)
-
-sleep(3)
-
-shell.run(
-    selectedReactor.file
-)
+ 
+startup = http.get(startupURL)
+startupFile = startup.readAll()
+ 
+if fs.exists("reactor") == false then
+    local file1 = fs.open("reactor", "w")
+    file1.write(startupFile)
+    file1.close()
+    print("Reactor File downloaded")
+else
+    local file1 = fs.open("reactor", "r")
+    local reactor = file1.readAll()
+    if startupFile ~= reactor then
+        file1.close()
+        local file2 = fs.open("reactor", "w")
+        file2.write(startupFile)
+        file2.close()
+        
+        print("Reactor File updating...")
+    else
+        file1.close()
+        print("Reactor File up to date")
+    end
+end
+ 
+print("Finished")
+print("Starting Program")
+sleep(5)
+ 
+shell.run("reactor")
